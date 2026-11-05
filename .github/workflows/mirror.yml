@@ -1,0 +1,38 @@
+name: Push to GitLab
+
+on:
+  push:
+    branches: [ "**" ]
+    tags: [ "**" ]
+  workflow_dispatch:
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to GitLab
+        env:
+          GITLAB_PAT: ${{ secrets.GITLAB_PAT }}
+        run: |
+          # Get GitHub repo owner and repo name dynamically
+          GH_OWNER="${{ github.repository_owner }}"
+          REPO_NAME="${{ github.event.repository.name }}"
+
+          # Transform username if it is hasankayra04
+          if [ "$GH_OWNER" = "hasankayra04" ]; then
+            GL_NAMESPACE="hasankayra04-org"
+          else
+            GL_NAMESPACE="$GH_OWNER"
+          fi
+
+          echo "Targeting GitLab namespace: $GL_NAMESPACE / $REPO_NAME"
+
+          # Add GitLab remote and push
+          git remote add gitlab "https://oauth2:${GITLAB_PAT}@gitlab.com/${GL_NAMESPACE}/${REPO_NAME}.git"
+          git push gitlab --all --force
+          git push gitlab --tags --force
